@@ -21,10 +21,12 @@ import sqlite3
 
 #-------------------------------------------------
 # the database where I'm storing stuff
-DATABASE='/home/pi/database/desert-home'
+#DATABASE='/home/pi/database/desert-home'
+DATABASE='/home/volz/xbee-monitor/desert-home.sqlite3'
 
 # on the Raspberry Pi the serial port is ttyAMA0
-XBEEPORT = '/dev/ttyUSB1'
+#XBEEPORT = '/dev/ttyUSB1'
+XBEEPORT = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AD02FMB2-if00-port0'
 XBEEBAUD_RATE = 9600
 
 # The XBee addresses I'm dealing with
@@ -57,7 +59,10 @@ def messageReceived(data):
  #print 'gotta packet' 
  #print data
  clusterId = (ord(data['cluster'][0])*256) + ord(data['cluster'][1])
- print 'Cluster ID:', hex(clusterId),
+ switchLongAddr = data['source_addr_long'] 
+ sourceAddr = switchLongAddr.encode("hex")
+ print 'Addr:', sourceAddr, 'Cluster ID:', hex(clusterId),
+ #print 'Cluster ID:', hex(clusterId),
  if (clusterId == 0x13):
   # This is the device announce message.
   # due to timing problems with the switch itself, I don't 
