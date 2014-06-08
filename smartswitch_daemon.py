@@ -165,7 +165,7 @@ def messageReceived(data):
         if (clusterCmd == 0xfd):
             rssi = ord(data['rf_data'][3])
             print "RSSI value: {0}".format(rssi)
-            gauge.send('rssi', upTime)
+            gauge.send('rssi', rssi)
         elif (clusterCmd == 0xfe):
             print "Version Information"
         else:
