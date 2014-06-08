@@ -24,7 +24,8 @@ import shlex
 DATABASE='/home/pi/database/desert-home'
 
 # on the Raspberry Pi the serial port is ttyAMA0
-XBEEPORT = '/dev/ttyUSB0'
+#XBEEPORT = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A800HFZH-if00-port0'
+XBEEPORT = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AD02FMB2-if00-port0'                            
 XBEEBAUD_RATE = 9600
 
 # The XBee addresses I'm dealing with
@@ -44,8 +45,8 @@ ser = serial.Serial(XBEEPORT, XBEEBAUD_RATE)
 # this is a call back function.  When a message
 # comes in this function will get the data
 def messageReceived(data):
-#   print 'gotta packet' 
-#   print data
+    print 'gotta packet' 
+    print data
     # This is a test program, so use global variables and
     # save the addresses so they can be used later
     global switchLongAddr
@@ -53,7 +54,8 @@ def messageReceived(data):
     switchLongAddr = data['source_addr_long'] 
     switchShortAddr = data['source_addr']
     clusterId = (ord(data['cluster'][0])*256) + ord(data['cluster'][1])
-    print 'Cluster ID:', hex(clusterId),
+    sourceAddr = switchLongAddr.encode("hex")
+    print 'Addr:', sourceAddr, 'Cluster ID:', hex(clusterId),
     if (clusterId == 0x13):
         # This is the device announce message.
         # due to timing problems with the switch itself, I don't 
@@ -201,7 +203,7 @@ def sendSwitch(whereLong, whereShort, srcEndpoint, destEndpoint,
 #-----------------------------------------------------------------
 
 # Create XBee library API object, which spawns a new thread
-zb = ZigBee(ser, callback=messageReceived)
+zb = ZigBee(ser, escaped=True, callback=messageReceived)
 
 print "started at ", time.strftime("%A, %B, %d at %H:%M:%S")
 print "Enter a number from 0 through 8 to send a command"
