@@ -19,11 +19,11 @@ switchLongAddr = '12'
 switchShortAddr = '12'
 
 # default log level
-DEFAULT_LOG_LEVEL = 'DEBUG'
+DEFAULT_LOG_LEVEL = 'INFO'
 
 # deal with command line arguments
 arg_parser = argparse.ArgumentParser(description='process arguments')
-arg_parser.add_argument('--log-level', help="Log level")
+arg_parser.add_argument('--log-level', help="Log level", default=DEFAULT_LOG_LEVEL)
 args = arg_parser.parse_args()
 
 print "Log Level: {0}".format(args.log_level)
