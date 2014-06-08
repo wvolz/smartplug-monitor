@@ -1,13 +1,6 @@
-#! /usr/bin/python
-# This is the an implementation of controlling the Lowe's Iris Smart
-# Switch.  It will join with a switch and allow you to control the switch
-#
-#  Only ONE switch though.  This implementation is a direct port of the 
-# work I did for an Arduino and illustrates what needs to be done for the 
-# basic operation of the switch.  If you want more than one switch, you can
-# adapt this code, or use the ideas in it to make your own control software.
-#
-# Have fun
+#!/usr/bin/python
+
+# This is mostly from http://www.desert-home.com/
 
 from xbee import ZigBee 
 import logging
@@ -15,19 +8,33 @@ import datetime
 import time
 import serial
 import sys
+import argparse
 import statsd
 
-# on the Raspberry Pi the serial port is ttyAMA0
-#XBEEPORT = '/dev/ttyUSB2'
-#XBEEPORT = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A800HFZH-if00-port0'
+# global variables
 XBEEPORT = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AD02FMB2-if00-port0'
 XBEEBAUD_RATE = 9600
 
 switchLongAddr = '12'
 switchShortAddr = '12'
 
+# default log level
+DEFAULT_LOG_LEVEL = 'DEBUG'
+
+# deal with command line arguments
+arg_parser = argparse.ArgumentParser(description='process arguments')
+arg_parser.add_argument('--log-level', help="Log level")
+args = arg_parser.parse_args()
+
+print "Log Level: {0}".format(args.log_level)
+
+# validate log_level
+log_level = getattr(logging, args.log_level.upper(), None)
+if not isinstance(log_level, int):
+    raise ValueError('Invalid log level: %s' % argLogLevel)
+
 #-------------------------------------------------
-logging.basicConfig()
+logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(name)s %(message)s')
 
 #------------ XBee Stuff -------------------------
 # Open serial port for use by the XBee
@@ -45,8 +52,11 @@ def messageReceived(data):
     switchLongAddr = data['source_addr_long'] 
     switchShortAddr = data['source_addr']
     clusterId = (ord(data['cluster'][0])*256) + ord(data['cluster'][1])
-    sourceAddr = switchLongAddr.encode("hex")
+    sourceAddrHex = switchLongAddr.encode("hex")
+    clusterIdHex = hex(clusterId)
+    gauge = statsd.Gauge('xbee-{0}'.format(sourceAddrHex))
     #print 'Addr:', sourceAddr, 'Cluster ID:', hex(clusterId),
+    logging.debug("Packet from addr {0} cluster {1}".format(sourceAddrHex, clusterIdHex))
     if (clusterId == 0x13):
         # This is the device announce message.
         # due to timing problems with the switch itself, I don't 
@@ -124,7 +134,6 @@ def messageReceived(data):
             #print 'Instantaneous Power',
             #print ord(data['rf_data'][3]) + (ord(data['rf_data'][4]) * 256)
             watts = ord(data['rf_data'][3]) + (ord(data['rf_data'][4]) * 256)
-            gauge = statsd.Gauge('xbee-{0}'.format(sourceAddr))
             gauge.send('instant_power', watts)
         elif (clusterCmd == 0x82):
             #print "Minute Stats:",
@@ -133,6 +142,7 @@ def messageReceived(data):
                 (ord(data['rf_data'][4]) * 256) +
                 (ord(data['rf_data'][5]) * 256 * 256) +
                 (ord(data['rf_data'][6]) * 256 * 256 * 256) )
+            gauge.send('watt_hours', usage/3600)
             #print usage, 'Watt Seconds ',
             #print 'Up Time,',
             upTime = (ord(data['rf_data'][7]) +
@@ -140,6 +150,7 @@ def messageReceived(data):
                 (ord(data['rf_data'][9]) * 256 * 256) +
                 (ord(data['rf_data'][10]) * 256 * 256 * 256) )
             #print upTime, 'Seconds'
+            gauge.send('uptime', upTime)
     elif (clusterId == 0xf0):
         clusterCmd = ord(data['rf_data'][2])
         #print "Cluster Cmd:", hex(clusterCmd),
@@ -152,7 +163,9 @@ def messageReceived(data):
     elif (clusterId == 0xf6):
         clusterCmd = ord(data['rf_data'][2])
         if (clusterCmd == 0xfd):
-            print "RSSI value:", ord(data['rf_data'][3])
+            rssi = ord(data['rf_data'][3])
+            print "RSSI value: {0}".format(rssi)
+            gauge.send('rssi', upTime)
         elif (clusterCmd == 0xfe):
             print "Version Information"
         else:
@@ -195,65 +208,13 @@ def sendSwitch(whereLong, whereShort, srcEndpoint, destEndpoint,
 # Create XBee library API object, which spawns a new thread
 zb = ZigBee(ser, escaped=True, callback=messageReceived)
 
-print "started at ", time.strftime("%A, %B, %d at %H:%M:%S")
-print "Enter a number from 0 through 8 to send a command"
+# TODO add some means of communicating with the switch? Sockets?
+logging.warning("starting")
+#print "started at ", time.strftime("%A, %B, %d at %H:%M:%S")
 while True:
     try:
         time.sleep(0.001)
         str1 = raw_input("")
-        # Turn Switch Off
-        if(str1[0] == '0'):
-            print 'Turn switch off'
-            databytes1 = '\x01'
-            databytesOff = '\x00\x01'
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xee', '\xc2\x16', '\x01', databytes1)
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xee', '\xc2\x16', '\x02', databytesOff)
-        # Turn Switch On
-        if(str1[0] == '1'):
-            print 'Turn switch on'
-            databytes1 = '\x01'
-            databytesOn = '\x01\x01'
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xee', '\xc2\x16', '\x01', databytes1)
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xee', '\xc2\x16', '\x02', databytesOn)
-        # this goes down to the test routine for further hacking
-        elif (str1[0] == '2'):
-            #testCommand()
-            print 'Not Implemented'
-        # This will get the Version Data, it's a combination of data and text
-        elif (str1[0] == '3'):
-            print 'Version Data'
-            databytes = '\x00\x01'
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xf6', '\xc2\x16', '\xfc', databytes)
-        # This command causes a message return holding the state of the switch
-        elif (str1[0] == '4'):
-            print 'Switch Status'
-            databytes = '\x01'
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xee', '\xc2\x16', '\x01', databytes)
-        # restore normal mode after one of the mode changess that follow
-        elif (str1[0] == '5'):
-            print 'Restore Normal Mode'
-            databytes = '\x00\x01'
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xf0', '\xc2\x16', '\xfa', databytes)
-        # range test - periodic double blink, no control, sends RSSI, no remote control
-        # remote control works
-        elif (str1[0] == '6'):
-            print 'Range Test'
-            databytes = '\x01\x01'
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xf0', '\xc2\x16', '\xfa', databytes)
-        # locked mode - switch can't be controlled locally, no periodic data
-        elif (str1[0] == '7'):
-            print 'Locked Mode'
-            databytes = '\x02\x01'
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xf0', '\xc2\x16', '\xfa', databytes)
-        # Silent mode, no periodic data, but switch is controllable locally
-        elif (str1[0] == '8'):
-            print 'Silent Mode'
-            databytes = '\x03\x01'
-            sendSwitch(switchLongAddr, switchShortAddr, '\x00', '\x02', '\x00\xf0', '\xc2\x16', '\xfa', databytes)
-#       else:
-#           print 'Unknown Command'
-    except IndexError:
-        print "empty line"
     except KeyboardInterrupt:
         print "Keyboard interrupt"
         break
@@ -264,7 +225,7 @@ while True:
         print "Unexpected error:", sys.exc_info()[0]
         break
 
-print "After the while loop"
+print "Exiting"
 # halt() must be called before closing the serial
 # port in order to ensure proper thread shutdown
 zb.halt()
