@@ -173,11 +173,10 @@ def messageReceived(data):
     elif (clusterId == 0xee):
         clusterCmd = ord(data['rf_data'][2])
         if (clusterCmd == 0x80):
-            print "Switch is:",
+            switch_status = "OFF"
             if (ord(data['rf_data'][3]) & 0x01):
-                print "ON"
-            else:
-                print "OFF"
+                switch_status = "ON"
+            logging.debug("Packet from addr {0} cluster {1} Switch Status {2}".format(sourceAddrHex, clusterIdHex, switch_status))
     else:
         print "Unimplemented Cluster ID", hex(clusterId)
         print
@@ -214,7 +213,6 @@ logging.warning("starting")
 while True:
     try:
         time.sleep(0.001)
-        str1 = raw_input("")
     except KeyboardInterrupt:
         print "Keyboard interrupt"
         break
