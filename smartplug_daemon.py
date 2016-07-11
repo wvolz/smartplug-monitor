@@ -10,6 +10,7 @@ import serial
 import sys
 import argparse
 import statsd
+from struct import unpack
 
 # global variables
 XBEEPORT = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AD02FMB2-if00-port0'
@@ -177,6 +178,24 @@ def messageReceived(data):
             if (ord(data['rf_data'][3]) & 0x01):
                 switch_status = "ON"
             logging.debug("Packet from addr {0} cluster {1} Switch Status {2}".format(sourceAddrHex, clusterIdHex, switch_status))
+    elif (clusterId == 0x11):
+        # TODO add something here to handle multiple devices sending temp
+        #print "cluster 0x11 from {0}: profile=0x{1} dest_endpoint=0x{2} data=0x{3}".format(
+        #        sourceAddrHex,
+        #        data['profile'].encode('hex'),
+        #        data['dest_endpoint'].encode('hex'),
+        #        data['rf_data'].encode('hex'))
+        #print "rf_data {0}".format(data['rf_data'])
+        #print "data temp = {0} C , humidity = {1}".format(
+        #        unpack('f',data['rf_data'][0:4])[0],
+        #        unpack('f',data['rf_data'][4:])[0]
+        #        )
+        temp_c = unpack('f',data['rf_data'][0:4])[0]
+        humidity = unpack('f',data['rf_data'][4:])[0]
+        # convert temp_c to temp_f
+        temp_f = temp_c * 1.8 + 32
+        gauge.send('temp', temp_f)
+        gauge.send('humidity', humidity)
     else:
         print "Unimplemented Cluster ID", hex(clusterId)
         print
