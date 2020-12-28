@@ -27,7 +27,7 @@ arg_parser = argparse.ArgumentParser(description='process arguments')
 arg_parser.add_argument('--log-level', help="Log level", default=DEFAULT_LOG_LEVEL)
 args = arg_parser.parse_args()
 
-print "Log Level: {0}".format(args.log_level)
+print("Log Level: {0}".format(args.log_level))
 
 # validate log_level
 log_level = getattr(logging, args.log_level.upper(), None)
@@ -44,20 +44,21 @@ ser = serial.Serial(XBEEPORT, XBEEBAUD_RATE)
 # this is a call back function.  When a message
 # comes in this function will get the data
 def messageReceived(data):
-    #print 'gotta packet' 
-    #print data
+    logging.debug("Got packet {0}".format(data))
     # This is a test program, so use global variables and
     # save the addresses so they can be used later
     global switchLongAddr
     global switchShortAddr
     switchLongAddr = data['source_addr_long'] 
     switchShortAddr = data['source_addr']
-    clusterId = (ord(data['cluster'][0])*256) + ord(data['cluster'][1])
-    sourceAddrHex = switchLongAddr.encode("hex")
+    clusterId = int.from_bytes(data['cluster'], byteorder='big')
+    sourceAddrHex = switchLongAddr.hex()
     clusterIdHex = hex(clusterId)
     gauge = statsd.Gauge('xbee-{0}'.format(sourceAddrHex))
-    #print 'Addr:', sourceAddr, 'Cluster ID:', hex(clusterId),
-    logging.debug("Packet from addr {0} cluster {1}".format(sourceAddrHex, clusterIdHex))
+    clusterCmd = int(data['rf_data'][2])
+    logging.debug("Packet from addr {0} cluster {1} cmd {2}".format(sourceAddrHex,
+                                                                    clusterIdHex,
+                                                                    hex(clusterCmd)))
     if (clusterId == 0x13):
         # This is the device announce message.
         # due to timing problems with the switch itself, I don't 
@@ -130,31 +131,25 @@ def messageReceived(data):
         #print 'Sent hardware join messages'
 
     elif (clusterId == 0xef):
-        clusterCmd = ord(data['rf_data'][2])
         if (clusterCmd == 0x81):
-            #print 'Instantaneous Power',
-            #print ord(data['rf_data'][3]) + (ord(data['rf_data'][4]) * 256)
-            watts = ord(data['rf_data'][3]) + (ord(data['rf_data'][4]) * 256)
+            # per desert-home.com, instantaneous power is sent little indian
+            watts = int.from_bytes(data['rf_data'][3:4], byteorder='little')
+            logging.debug('Instantaneous Power {0}W'.format(watts) )
             gauge.send('instant_power', watts)
         elif (clusterCmd == 0x82):
             #print "Minute Stats:",
             #print 'Usage, ',
-            usage = (ord(data['rf_data'][3]) +
-                (ord(data['rf_data'][4]) * 256) +
-                (ord(data['rf_data'][5]) * 256 * 256) +
-                (ord(data['rf_data'][6]) * 256 * 256 * 256) )
+            usage = int.from_bytes(data['rf_data'][3:6], byteorder='little')
+            logging.debug('Watt seconds {0}'.format(usage))
             gauge.send('watt_hours', usage/3600)
             #print usage, 'Watt Seconds ',
             #print 'Up Time,',
-            upTime = (ord(data['rf_data'][7]) +
-                (ord(data['rf_data'][8]) * 256) +
-                (ord(data['rf_data'][9]) * 256 * 256) +
-                (ord(data['rf_data'][10]) * 256 * 256 * 256) )
+            upTime = int.from_bytes(data['rf_data'][7:10], byteorder='little')
+            logging.debug('Uptime {0} seconds'.format(upTime))
             #print upTime, 'Seconds'
             gauge.send('uptime', upTime)
     elif (clusterId == 0xf0):
-        clusterCmd = ord(data['rf_data'][2])
-        #print "Cluster Cmd:", hex(clusterCmd),
+        logging.debug('Cluster 0xf0 processing cmd: {0}'.format(hex(clusterCmd)))
         if (clusterCmd == 0xfb):
             #print "Temperature ??"
             pass
@@ -162,20 +157,18 @@ def messageReceived(data):
             #print "Unimplemented"
             pass
     elif (clusterId == 0xf6):
-        clusterCmd = ord(data['rf_data'][2])
         if (clusterCmd == 0xfd):
-            rssi = ord(data['rf_data'][3])
-            print "RSSI value: {0}".format(rssi)
+            rssi = int(data['rf_data'][3])
+            logging.info('RSSI value: {0}'.format(rssi))
             gauge.send('rssi', rssi)
         elif (clusterCmd == 0xfe):
-            print "Version Information"
+            logging.info('Received Version information')
         else:
-            print data['rf_data']
+            logging.info(data['rf_data'])
     elif (clusterId == 0xee):
-        clusterCmd = ord(data['rf_data'][2])
         if (clusterCmd == 0x80):
             switch_status = "OFF"
-            if (ord(data['rf_data'][3]) & 0x01):
+            if (data['rf_data'][3] & 0x01):
                 switch_status = "ON"
             logging.debug("Packet from addr {0} cluster {1} Switch Status {2}".format(sourceAddrHex, clusterIdHex, switch_status))
     elif (clusterId == 0x11):
@@ -197,7 +190,7 @@ def messageReceived(data):
         gauge.send('temp', temp_f)
         gauge.send('humidity', humidity)
     else:
-        print "Unimplemented Cluster ID", hex(clusterId)
+        logging.info("Unimplemented Cluster ID", hex(clusterId))
         print
 
 def sendSwitch(whereLong, whereShort, srcEndpoint, destEndpoint, 
@@ -227,22 +220,23 @@ def sendSwitch(whereLong, whereShort, srcEndpoint, destEndpoint,
 zb = ZigBee(ser, escaped=True, callback=messageReceived)
 
 # TODO add some means of communicating with the switch? Sockets?
-logging.warning("starting")
+logging.info("starting")
 #print "started at ", time.strftime("%A, %B, %d at %H:%M:%S")
+
 while True:
     try:
         time.sleep(0.001)
     except KeyboardInterrupt:
-        print "Keyboard interrupt"
+        print("Keyboard interrupt")
         break
     except NameError as e:
-        print "NameError:",
-        print e.message.split("'")[1]
+        print("NameError:"),
+        print(e.message.split("'")[1])
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print("Unexpected error:", sys.exc_info()[0])
         break
 
-print "Exiting"
+print("Exiting")
 # halt() must be called before closing the serial
 # port in order to ensure proper thread shutdown
 zb.halt()

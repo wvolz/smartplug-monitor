@@ -34,7 +34,7 @@ xbee = ZigBee(ser, escaped=True)
 
 while True:
     try:
-        print xbee.wait_read_frame()
+        print(xbee.wait_read_frame())
         #print ser.read()
     except KeyboardInterrupt:
         break
