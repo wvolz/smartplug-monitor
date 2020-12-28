@@ -1,0 +1,8 @@
+#!/bin/sh
+
+PYTHON=/bin/python
+DAEMON_DIR=/home/smartplug-monitor
+DAEMON=smartplug_daemon.py
+
+exec 2>&1
+exec $PYTHON $DAEMON_DIR/$DAEMON
