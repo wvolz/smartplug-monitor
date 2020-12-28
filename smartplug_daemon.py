@@ -10,6 +10,7 @@ import serial
 import sys
 import argparse
 import statsd
+import json
 from struct import unpack
 
 # global variables
@@ -183,9 +184,17 @@ def messageReceived(data):
         #        unpack('f',data['rf_data'][0:4])[0],
         #        unpack('f',data['rf_data'][4:])[0]
         #        )
-        temp_c = unpack('f',data['rf_data'][0:4])[0]
-        humidity = unpack('f',data['rf_data'][4:])[0]
+        # used before the JSON era
+        #temp_c = unpack('f',data['rf_data'][0:4])[0]
+        #humidity = unpack('f',data['rf_data'][4:])[0]
+        inbound_data = json.loads(data['rf_data'])
         # convert temp_c to temp_f
+        # grab sensor name which should be the first field in the JSON ie:
+        # {"Temp1":{"temp":18.46,"humi":30.41785,"dew":0.737981,"utime":1110}}
+        for sensor_name in inbound_data:
+            #print "Sensor data from {0}".format(sensor_name)
+            temp_c = inbound_data[sensor_name]["temp"]
+            humidity = inbound_data[sensor_name]["humi"]
         temp_f = temp_c * 1.8 + 32
         gauge.send('temp', temp_f)
         gauge.send('humidity', humidity)
