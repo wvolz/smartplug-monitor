@@ -152,11 +152,28 @@ def messageReceived(data):
     elif (clusterId == 0xf0):
         logging.debug('Cluster 0xf0 processing cmd: {0}'.format(hex(clusterCmd)))
         if (clusterCmd == 0xfb):
-            #print "Temperature ??"
-            pass
+            # note: the temp part of this packet seems to not work?
+            # temp is likely in C * 100?
+            #temp_raw = int.from_bytes(data['rf_data'][8:10], byteorder='little')
+            # convert into F
+            #temp = temp_raw / 100 * 1.8 + 32
+            logging.debug('AlertMe Lifesign Cluster 0xf0: {0}'.format(data))
+            # decode per https://github.com/arcus-smart-home/arcusplatform/blob/a02ad0e9274896806b7d0108ee3644396f3780ad/common/arcus-protocol/src/main/irp/ame-general.irp
+            # note status_flags indicate capabilities
+            lifesign_packet = {
+                "status_flags": data['rf_data'][3],
+                "msTimer": int.from_bytes(data['rf_data'][4:7], byteorder='little'),
+                "psuVoltage": data['rf_data'][8:9],
+                "temperature": data['rf_data'][10:11],
+                "rssi": data['rf_data'][12],
+                "lqi": data['rf_data'][13],
+                "switch_mask": data['rf_data'][14],
+                "switch_state": data['rf_data'][15],
+            }
+            logging.debug("RSSI = {0}, LQI = {1}, msTimer = {2}".format(lifesign_packet["rssi"], lifesign_packet["lqi"], lifesign_packet["msTimer"]))
         else:
             #print "Unimplemented"
-            pass
+            logging.debug('Unimplemented AlertMe general cluster')
     elif (clusterId == 0xf6):
         if (clusterCmd == 0xfd):
             rssi = int(data['rf_data'][3])
