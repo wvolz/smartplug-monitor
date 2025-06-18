@@ -3,7 +3,7 @@ name = "smartplug-monitor"
 version = "0.1.0"
 requires-python = ">=3.13.2"
 dependencies = [
-    "pyserial==3.4",
+    "pyserial==3.5",
     "python-statsd==2.1.0",
     "xbee==2.3.2",
 ]
