@@ -1,0 +1,50 @@
+version = 1
+revision = 1
+requires-python = ">=3.7.4"
+
+[[package]]
+name = "pyserial"
+version = "3.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/74/11b04703ec416717b247d789103277269d567db575d2fd88f25d9767fe3d/pyserial-3.4.tar.gz", hash = "sha256:6e2d401fdee0eab996cf734e67773a0143b932772ca8b42451440cfed942c627", size = 151657 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0d/e4/2a744dd9e3be04a0c0907414e2a01a7c88bb3915cbe3c8cc06e209f59c30/pyserial-3.4-py2.py3-none-any.whl", hash = "sha256:e0770fadba80c31013896c7e6ef703f72e7834965954a78e71a3049488d4d7d8", size = 193717 },
+]
+
+[[package]]
+name = "python-statsd"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bc/ea/0beeadf66faed4ccdcb48009bb4eebf580ac6c05e55b6fae4032c6c45b9a/python-statsd-2.1.0.tar.gz", hash = "sha256:d2c573d325d0f015b4d79f0d0f8c88dd8413d7b9ef890c09076a9b6089ab301c", size = 10834 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6f/af/224e67da2deda72317aa9afe3445cf849ebd86f4001e20b5d164ef9d05f8/python_statsd-2.1.0-py2.py3-none-any.whl", hash = "sha256:f0b8b3333a7d474a3b0ece069e4849febdc66d2712d5290aea6ff1189a05fb80", size = 14479 },
+]
+
+[[package]]
+name = "smartplug-monitor"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "pyserial" },
+    { name = "python-statsd" },
+    { name = "xbee" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pyserial", specifier = "==3.4" },
+    { name = "python-statsd", specifier = "==2.1.0" },
+    { name = "xbee", specifier = "==2.3.2" },
+]
+
+[[package]]
+name = "xbee"
+version = "2.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyserial" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/6b/34a1a5a0c45c662f8ae033a0d077b0fcc45b3e0e71e0b17522b2861e0090/XBee-2.3.2.tar.gz", hash = "sha256:77c06de63403409a7e6ca2305b05f499fbff52a0d6031366ffb7acebe14db657", size = 28117 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/a3/464ff453523bd0a614df9f738afbdc02888bd59440ba35edcacb50805c85/XBee-2.3.2-py3-none-any.whl", hash = "sha256:f4a9f7d5da7c0fbc19b4e52f8b975859c277ef72606d18d1b6f468049e14d0ae", size = 25376 },
+]

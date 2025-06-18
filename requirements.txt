@@ -1,3 +1,0 @@
-pyserial==3.4
-python-statsd==2.1.0
-XBee==2.3.2
