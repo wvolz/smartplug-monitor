@@ -2,7 +2,7 @@
 
 # This is mostly from http://www.desert-home.com/
 
-from xbee import ZigBee 
+from xbee import ZigBee
 import logging
 import datetime
 import time
@@ -50,7 +50,7 @@ def messageReceived(data):
     # save the addresses so they can be used later
     global switchLongAddr
     global switchShortAddr
-    switchLongAddr = data['source_addr_long'] 
+    switchLongAddr = data['source_addr_long']
     switchShortAddr = data['source_addr']
     clusterId = int.from_bytes(data['cluster'], byteorder='big')
     sourceAddrHex = switchLongAddr.hex()
@@ -62,7 +62,7 @@ def messageReceived(data):
                                                                     hex(clusterCmd)))
     if (clusterId == 0x13):
         # This is the device announce message.
-        # due to timing problems with the switch itself, I don't 
+        # due to timing problems with the switch itself, I don't
         # respond to this message, I save the response for later after the
         # Match Descriptor request comes in.  You'll see it down below.
         # if you want to see the data that came in with this message, just
@@ -71,14 +71,14 @@ def messageReceived(data):
         pass
     elif (clusterId == 0x8005):
         # this is the Active Endpoint Response This message tells you
-        # what the device can do, but it isn't constructed correctly to match 
-        # what the switch can do according to the spec.  This is another 
+        # what the device can do, but it isn't constructed correctly to match
+        # what the switch can do according to the spec.  This is another
         # message that gets it's response after I receive the Match Descriptor
         #print 'Active Endpoint Response'
         pass
     elif (clusterId == 0x0006):
         # Match Descriptor Request; this is the point where I finally
-        # respond to the switch.  Several messages are sent to cause the 
+        # respond to the switch.  Several messages are sent to cause the
         # switch to join with the controller at a network level and to cause
         # it to regard this controller as valid.
         #
@@ -107,7 +107,7 @@ def messageReceived(data):
         )
         #print 'Sent Match Descriptor'
         # Now there are two messages directed at the hardware
-        # code (rather than the network code.  The switch has to 
+        # code (rather than the network code.  The switch has to
         # receive both of these to stay joined.
         payload3 = '\x11\x01\x01'
         zb.send('tx_explicit',
@@ -219,9 +219,9 @@ def messageReceived(data):
         logging.info("Unimplemented Cluster ID", hex(clusterId))
         print
 
-def sendSwitch(whereLong, whereShort, srcEndpoint, destEndpoint, 
+def sendSwitch(whereLong, whereShort, srcEndpoint, destEndpoint,
                 clusterId, profileId, clusterCmd, databytes):
-    
+
     payload = '\x11\x00' + clusterCmd + databytes
     # print 'payload',
     # for c in payload:
@@ -231,7 +231,7 @@ def sendSwitch(whereLong, whereShort, srcEndpoint, destEndpoint,
     # for c in whereLong:
         # print hex(ord(c)),
     # print
-        
+
     zb.send('tx_explicit',
         dest_addr_long = whereLong,
         dest_addr = whereShort,
@@ -241,7 +241,7 @@ def sendSwitch(whereLong, whereShort, srcEndpoint, destEndpoint,
         profile = profileId,
         data = payload
         )
-    
+
 # Create XBee library API object, which spawns a new thread
 zb = ZigBee(ser, escaped=True, callback=messageReceived)
 
